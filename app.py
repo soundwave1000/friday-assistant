@@ -1,76 +1,50 @@
 import streamlit as st
-from google import genai
-from google.genai import types
+import google.generativeai as genai
 
-# Configuración visual de la página
-st.set_page_config(page_title="FRIDAY OS", page_icon="⚡", layout="centered")
+# Configuración visual para móvil
+st.set_page_config(page_title="F.R.I.D.A.Y.", page_icon="🤖", layout="centered")
 
-# Estilo HUD futurista (Estética Iron Man)
-st.markdown(
-    """
-    <style>
-    .stApp {
-        background-color: #0b0f19;
-        color: #00d2ff;
-    }
-    </style>
-    """,
-    unsafe_allow_html=True,
-)
+st.markdown("### F.R.I.D.A.Y. • Protocolo Activo")
 
-st.title("⚡ F.R.I.D.A.Y.")
-st.caption("Sistema de Asistencia Táctico Personal - Online")
-
-# Inicializar cliente de Gemini utilizando los Secrets de Streamlit
-try:
-    client = genai.Client(api_key=st.secrets["GEMINI_API_KEY"])
-except Exception:
-    st.error(
-        "Error crítico: No se ha configurado la API Key de Gemini en los Secrets"
-        " de Streamlit."
-    )
+# Lectura de la clave desde los Secrets
+api_key = st.secrets.get("GEMINI_API_KEY")
+if not api_key:
+    st.error("Falta configurar GEMINI_API_KEY en los Secrets de Streamlit.")
     st.stop()
 
-# Instrucción de sistema para darle la personalidad de FRIDAY
-system_prompt = """
-Eres FRIDAY, un sistema operativo de asistencia personal altamente avanzado, 
-inspirado en la inteligencia artificial de Tony Stark. 
-Tu tono es eficiente, profesional, ligeramente irónico y siempre leal a tu usuario.
-Responde de forma concisa, inteligente y con un toque tecnológico.
-"""
+# Configurar la API Key
+genai.configure(api_key=api_key)
 
-# Historial de chat
-if "messages" not in st.session_state:
-    st.session_state.messages = []
+# Inicializar modelo con personalidad de Friday
+system_instruction = (
+    "Eres F.R.I.D.A.Y., la IA táctica y asistente personal del usuario al estilo Iron Man. "
+    "Tu tono es eficiente, conciso, respetuoso y leal. "
+    "Ayudas a priorizar el día, redactar mensajes, responder dudas y estructurar ideas."
+)
 
-for message in st.session_state.messages:
+model = genai.GenerativeModel(
+    model_name="gemini-1.5-flash",
+    system_instruction=system_instruction
+)
+
+# Historial del chat en la sesión
+if "chat_history" not in st.session_state:
+    st.session_state.chat_history = []
+
+for message in st.session_state.chat_history:
     with st.chat_message(message["role"]):
         st.markdown(message["content"])
 
-# Entrada del usuario
-if prompt := st.chat_input("Escribe una orden para FRIDAY..."):
-    st.session_state.messages.append({"role": "user", "content": prompt})
+# Entrada de texto del usuario
+if user_prompt := st.chat_input("¿Qué necesita, señor?"):
+    st.session_state.chat_history.append({"role": "user", "content": user_prompt})
     with st.chat_message("user"):
-        st.markdown(prompt)
-
-    try:
-        # Configurar chat con Gemini
-        chat = client.chats.create(
-            model="gemini-2.5-flash",
-            config=types.GenerateContentConfig(
-                system_instruction=system_prompt, temperature=0.7
-            ),
-        )
-
-        response = chat.send_message(prompt)
-        bot_response = response.text
-
-    except Exception as e:
-        bot_response = f"Error en los sistemas, jefe: {e}"
+        st.markdown(user_prompt)
 
     with st.chat_message("assistant"):
-        st.markdown(bot_response)
-
-    st.session_state.messages.append(
-        {"role": "assistant", "content": bot_response}
-    )
+        try:
+            response = model.generate_content(user_prompt)
+            st.markdown(response.text)
+            st.session_state.chat_history.append({"role": "assistant", "content": response.text})
+        except Exception as e:
+            st.error(f"Error de conexión: {e}")
