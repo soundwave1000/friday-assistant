@@ -1,6 +1,7 @@
 import os
 import streamlit as st
 from google import genai
+from google.genai import types
 import streamlit.components.v1 as components
 
 # Configuración de página
@@ -70,13 +71,7 @@ hud_css = """
         margin-bottom: 12px;
     }
 
-    /* Caja de texto y grabadora */
-    .stChatInputContainer, [data-testid="stAudioInput"] {
-        border-color: #00f0ff !important;
-        box-shadow: 0 0 8px rgba(0, 240, 255, 0.2) !important;
-    }
-
-    /* Ocultar barra superior de Streamlit para efecto inmersivo */
+    /* Ocultar elementos de interfaz por defecto */
     header {visibility: hidden;}
     footer {visibility: hidden;}
 </style>
@@ -88,7 +83,6 @@ st.markdown(hud_css, unsafe_allow_html=True)
 st.markdown('<div class="hud-title">F. R. I. D. A. Y.</div>', unsafe_allow_html=True)
 st.markdown('<div class="hud-sub">STARK INDUSTRIES AI INTERFACE • PROTOCOLO ACTIVO</div>', unsafe_allow_html=True)
 
-# Barra de estado táctica
 st.markdown("""
 <div class="stark-panel">
     <span>NÚCLEO: GEMINI 3.8 FLASH</span>
@@ -107,18 +101,17 @@ client = genai.Client()
 system_prompt = (
     "Eres F.R.I.D.A.Y., la inteligencia artificial táctica y asistente personal creada por Industrias Stark. "
     "Tu tono es eficiente, conciso, respetuoso, servicial y leal, con un toque sutil de humor ejecutivo. "
-    "Trata al usuario como tu creador o superior. Responde de forma precisa y táctica."
+    "Trata al usuario como tu creador o superior. Responde de forma clara y directa. "
+    "Evita usar tablas o símbolos complejos para que la lectura de voz sea fluida."
 )
 
 if "chat_history" not in st.session_state:
     st.session_state.chat_history = []
 
-# Despliegue de mensajes
 for message in st.session_state.chat_history:
     with st.chat_message(message["role"]):
         st.markdown(message["content"])
 
-# Salida de voz nativa en el navegador
 def hablar(texto):
     limpio = texto.replace('"', '\\"').replace('\n', ' ')
     html_code = f"""
@@ -143,8 +136,13 @@ prompt_para_enviar = None
 
 if audio_data is not None:
     audio_bytes = audio_data.read()
+    # Empaquetado oficial con types.Part.from_bytes
+    audio_part = types.Part.from_bytes(
+        data=audio_bytes,
+        mime_type="audio/wav"
+    )
     prompt_para_enviar = [
-        {"mime_type": "audio/wav", "data": audio_bytes},
+        audio_part,
         "Responde a esta orden de voz de forma ejecutiva como F.R.I.D.A.Y."
     ]
 elif texto_input:
