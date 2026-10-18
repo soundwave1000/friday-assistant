@@ -41,7 +41,7 @@ if user_prompt := st.chat_input("¿Qué necesita, señor?"):
     with st.chat_message("assistant"):
         try:
             response = client.models.generate_content(
-                model="gemini-2.5-flash",
+                model="gemini-3.8-flash",
                 contents=user_prompt,
                 config={"system_instruction": system_prompt}
             )
